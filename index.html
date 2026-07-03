@@ -1,0 +1,1094 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Governed Agent: a Squid AI demonstration</title>
+<style>
+  :root {
+    --ground: #0B0E14;
+    --panel: #12161F;
+    --panel-2: #161B26;
+    --line: #212A3B;
+    --line-soft: #1A2130;
+    --ink: #E7EBF3;
+    --ink-dim: #8B95A9;
+    --ink-faint: #5D677C;
+    --accent: #48E0C8;
+    --accent-deep: #1f7a6f;
+    --sys-a: #E0A458;
+    --sys-b: #9B8CFF;
+    --sys-c: #5FB98E;
+    --deny: #E5675E;
+    --radius: 12px;
+    --mono: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, Consolas, monospace;
+    --sans: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body { height: 100%; }
+
+  body {
+    margin: 0;
+    background:
+      radial-gradient(1200px 700px at 78% -10%, rgba(72,224,200,0.06), transparent 60%),
+      var(--ground);
+    color: var(--ink);
+    font-family: var(--sans);
+    font-size: 15px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  .wrap {
+    max-width: 1160px;
+    margin: 0 auto;
+    padding: 28px 24px 40px;
+    min-height: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+
+  /* ---------- header ---------- */
+  header { display: flex; flex-direction: column; gap: 18px; }
+
+  .eyebrow {
+    font-family: var(--mono);
+    font-size: 11.5px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    display: flex;
+    align-items: center;
+    gap: 9px;
+  }
+  .eyebrow .dot {
+    width: 7px; height: 7px; border-radius: 50%;
+    background: var(--accent);
+    box-shadow: 0 0 10px rgba(72,224,200,0.7);
+  }
+
+  h1 {
+    margin: 0;
+    font-size: clamp(24px, 3.4vw, 34px);
+    line-height: 1.12;
+    font-weight: 620;
+    letter-spacing: -0.02em;
+    text-wrap: balance;
+    max-width: 22ch;
+  }
+  h1 .soft { color: var(--ink-dim); font-weight: 500; }
+
+  .pickerzone {
+    border-top: 1px solid var(--line-soft);
+    padding-top: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 11px;
+  }
+  .picker-hint {
+    font-family: var(--mono);
+    font-size: 10.5px;
+    letter-spacing: 0.13em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+  }
+  .worldtabs {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+  .worldtab .sub { color: var(--ink-faint); font-family: var(--mono); font-size: 10px; }
+  .worldtab[aria-selected="true"] .sub { color: rgba(11,14,20,0.55); }
+  .worldtab {
+    appearance: none;
+    background: transparent;
+    border: 1px solid var(--line);
+    color: var(--ink-dim);
+    font-family: var(--sans);
+    font-size: 13px;
+    padding: 8px 14px;
+    border-radius: 999px;
+    cursor: pointer;
+    transition: color .18s, border-color .18s, background .18s;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .worldtab .tag { font-family: var(--mono); font-size: 10px; color: var(--ink-faint); }
+  .worldtab:hover { color: var(--ink); border-color: #33405a; }
+  .worldtab[aria-selected="true"] {
+    color: var(--ground);
+    background: var(--ink);
+    border-color: var(--ink);
+  }
+  .worldtab[aria-selected="true"] .tag { color: rgba(11,14,20,0.55); }
+
+  /* ---------- stage ---------- */
+  .stage {
+    display: grid;
+    grid-template-columns: 1.05fr 0.95fr;
+    gap: 16px;
+    align-items: stretch;
+    flex: 1;
+    min-height: 0;
+  }
+  .card {
+    background: linear-gradient(180deg, var(--panel-2), var(--panel));
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  /* ---------- chat pane ---------- */
+  .pane-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 14px 16px;
+    border-bottom: 1px solid var(--line-soft);
+    flex-wrap: wrap;
+  }
+  .pane-title {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+  }
+
+  .persona {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .persona-label {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+  }
+  .seg {
+    display: inline-flex;
+    background: var(--ground);
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    padding: 2px;
+  }
+  .seg button {
+    appearance: none;
+    border: none;
+    background: transparent;
+    color: var(--ink-dim);
+    font-family: var(--sans);
+    font-size: 12px;
+    padding: 5px 11px;
+    border-radius: 999px;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: color .16s, background .16s;
+  }
+  .seg button[aria-pressed="true"] {
+    background: var(--accent);
+    color: #05201d;
+    font-weight: 600;
+  }
+  .seg button:hover:not([aria-pressed="true"]) { color: var(--ink); }
+
+  .messages {
+    flex: 1;
+    overflow-y: auto;
+    padding: 20px 16px 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    scroll-behavior: smooth;
+  }
+
+  .msg { display: flex; gap: 11px; max-width: 100%; }
+  .msg .avatar {
+    flex: 0 0 auto;
+    width: 26px; height: 26px;
+    border-radius: 7px;
+    display: grid; place-items: center;
+    font-family: var(--mono);
+    font-size: 11px;
+    font-weight: 700;
+    margin-top: 1px;
+  }
+  .msg.user { flex-direction: row-reverse; }
+  .msg.user .avatar { background: #202839; color: var(--ink-dim); }
+  .msg.agent .avatar {
+    background: rgba(72,224,200,0.12);
+    color: var(--accent);
+    border: 1px solid rgba(72,224,200,0.35);
+  }
+  .bubble {
+    padding: 11px 14px;
+    border-radius: 12px;
+    max-width: 82%;
+    font-size: 14.5px;
+  }
+  .msg.user .bubble {
+    background: #1c2536;
+    border: 1px solid #26324a;
+    border-top-right-radius: 4px;
+  }
+  .msg.agent .bubble {
+    background: transparent;
+    padding-left: 0;
+    max-width: 100%;
+  }
+  .bubble .cursor {
+    display: inline-block;
+    width: 8px; height: 15px;
+    background: var(--accent);
+    vertical-align: -2px;
+    margin-left: 2px;
+    animation: blink 1s steps(2) infinite;
+  }
+  @keyframes blink { 50% { opacity: 0; } }
+
+  .working {
+    color: var(--ink-dim);
+    font-family: var(--mono);
+    font-size: 12.5px;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .working .beat {
+    flex: 0 0 auto;
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--accent);
+    animation: beat 1s ease-in-out infinite;
+  }
+  @keyframes beat { 0%, 100% { opacity: .3; transform: scale(.8); } 50% { opacity: 1; transform: scale(1); } }
+
+  .denied-note {
+    margin-top: 9px;
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--deny);
+    background: rgba(229,103,94,0.09);
+    border: 1px solid rgba(229,103,94,0.28);
+    padding: 4px 9px;
+    border-radius: 7px;
+  }
+  .granted-note {
+    margin-top: 9px;
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--accent);
+    background: rgba(72,224,200,0.08);
+    border: 1px solid rgba(72,224,200,0.28);
+    padding: 4px 9px;
+    border-radius: 7px;
+  }
+
+  .composer {
+    border-top: 1px solid var(--line-soft);
+    padding: 12px 16px 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .chips { display: flex; flex-direction: column; gap: 7px; }
+  .chip {
+    text-align: left;
+    appearance: none;
+    background: var(--ground);
+    border: 1px solid var(--line);
+    color: var(--ink);
+    font-family: var(--sans);
+    font-size: 13px;
+    padding: 9px 12px;
+    border-radius: 9px;
+    cursor: pointer;
+    transition: border-color .16s, background .16s, transform .06s;
+    display: flex; align-items: center; gap: 9px;
+  }
+  .chip:hover { border-color: var(--accent-deep); background: #10141d; }
+  .chip:active { transform: translateY(1px); }
+  .chip .q { flex: 1; }
+  .chip .wallmark {
+    font-family: var(--mono);
+    font-size: 9.5px;
+    letter-spacing: 0.08em;
+    color: var(--deny);
+    border: 1px solid rgba(229,103,94,0.4);
+    padding: 2px 6px;
+    border-radius: 5px;
+    white-space: nowrap;
+  }
+
+  .inputrow { display: flex; gap: 8px; }
+  .inputrow input {
+    flex: 1;
+    background: var(--ground);
+    border: 1px solid var(--line);
+    border-radius: 9px;
+    color: var(--ink);
+    font-family: var(--sans);
+    font-size: 14px;
+    padding: 10px 12px;
+  }
+  .inputrow input::placeholder { color: var(--ink-faint); }
+  .inputrow input:focus { outline: none; border-color: var(--accent-deep); box-shadow: 0 0 0 3px rgba(72,224,200,0.12); }
+  .inputrow button {
+    appearance: none;
+    background: var(--accent);
+    color: #05201d;
+    border: none;
+    border-radius: 9px;
+    font-family: var(--sans);
+    font-weight: 600;
+    font-size: 14px;
+    padding: 0 16px;
+    cursor: pointer;
+  }
+  .inputrow button:disabled { opacity: .4; cursor: default; }
+
+  /* ---------- trace pane ---------- */
+  .trace-legend {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+  .legend-item {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--ink-dim);
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    padding: 3px 7px;
+  }
+  .legend-item .sw { width: 8px; height: 8px; border-radius: 2px; }
+
+  .trace-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 18px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    position: relative;
+  }
+  .trace-empty {
+    margin: auto;
+    text-align: center;
+    color: var(--ink-faint);
+    font-family: var(--mono);
+    font-size: 12px;
+    line-height: 1.7;
+    max-width: 30ch;
+  }
+  .trace-empty b { color: var(--ink-dim); font-weight: 500; }
+
+  /* swivel-chair "before": three disconnected systems */
+  .swivel {
+    margin: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    max-width: 340px;
+    width: 100%;
+  }
+  .swivel .cap {
+    font-family: var(--mono);
+    font-size: 11.5px;
+    line-height: 1.65;
+    color: var(--ink-faint);
+    text-align: center;
+  }
+  .swivel .cap b { color: var(--ink-dim); font-weight: 500; }
+  .swivel .row { display: flex; gap: 8px; }
+  .swivel .syscard {
+    flex: 1;
+    border: 1px dashed var(--line);
+    border-radius: 9px;
+    padding: 12px 8px;
+    background: var(--ground);
+    text-align: center;
+    position: relative;
+  }
+  .swivel .syscard .nm {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.03em;
+    color: var(--sc-color);
+  }
+  .swivel .syscard .st {
+    font-family: var(--mono);
+    font-size: 8.5px;
+    color: var(--ink-faint);
+    margin-top: 5px;
+    display: block;
+  }
+  .swivel .plus {
+    text-align: center;
+    color: var(--ink-faint);
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.1em;
+  }
+
+  .step {
+    display: grid;
+    grid-template-columns: 22px 1fr;
+    gap: 12px;
+    padding-bottom: 18px;
+    position: relative;
+    opacity: 0;
+    transform: translateY(4px);
+    animation: stepIn .32s ease forwards;
+  }
+  @keyframes stepIn { to { opacity: 1; transform: none; } }
+  .step:not(:last-child) .rail::after {
+    content: "";
+    position: absolute;
+    left: 10px; top: 22px; bottom: -18px;
+    width: 1px;
+    background: var(--line);
+  }
+  .rail { position: relative; }
+  .node {
+    width: 21px; height: 21px;
+    border-radius: 50%;
+    display: grid; place-items: center;
+    background: var(--ground);
+    border: 1.5px solid var(--line);
+    font-family: var(--mono);
+    font-size: 10px;
+  }
+  .node.ok { border-color: var(--n-color); color: var(--n-color); }
+  .node.deny { border-color: var(--deny); color: var(--deny); }
+
+  .step-body { min-width: 0; }
+  .step-sys {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--n-color, var(--ink-dim));
+    display: inline-flex; align-items: center; gap: 6px;
+  }
+  .step-sys .badge {
+    font-size: 8.5px;
+    padding: 1px 5px;
+    border-radius: 4px;
+    background: color-mix(in srgb, var(--n-color) 16%, transparent);
+  }
+  .step-sys.deny { color: var(--deny); }
+  .step-sys.deny .badge { background: rgba(229,103,94,0.16); }
+  .step-text {
+    margin-top: 3px;
+    font-family: var(--mono);
+    font-size: 12px;
+    line-height: 1.55;
+    color: var(--ink);
+    word-break: break-word;
+  }
+  .step-text .k { color: var(--accent); }
+  .step-text.deny { color: var(--deny); }
+
+  /* ---------- caption + footer ---------- */
+  .caption {
+    text-align: center;
+    font-size: 15px;
+    color: var(--ink-dim);
+    max-width: 54ch;
+    margin: 4px auto 0;
+    line-height: 1.55;
+  }
+  .caption b { color: var(--ink); font-weight: 600; }
+
+  .cta {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    flex-wrap: wrap;
+    padding: 2px 0;
+  }
+  .cta .line { color: var(--ink-dim); font-size: 14.5px; }
+  .cta .line b { color: var(--ink); font-weight: 600; }
+  .cta a {
+    text-decoration: none;
+    background: var(--accent);
+    color: #05201d;
+    font-weight: 600;
+    font-size: 14px;
+    padding: 10px 18px;
+    border-radius: 9px;
+    white-space: nowrap;
+    transition: transform .06s, box-shadow .18s;
+    box-shadow: 0 0 0 rgba(72,224,200,0);
+  }
+  .cta a:hover { box-shadow: 0 6px 22px rgba(72,224,200,0.22); }
+  .cta a:active { transform: translateY(1px); }
+
+  footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 14px;
+    flex-wrap: wrap;
+    border-top: 1px solid var(--line-soft);
+    padding-top: 16px;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--ink-faint);
+    letter-spacing: 0.03em;
+  }
+  footer .brand { color: var(--ink-dim); }
+  footer .brand b { color: var(--accent); font-weight: 600; }
+
+  /* keyboard focus */
+  a:focus-visible, button:focus-visible, input:focus-visible, [tabindex]:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+    border-radius: 6px;
+  }
+
+  /* ---------- mobile ---------- */
+  .trace-toggle { display: none; }
+  @media (max-width: 860px) {
+    .stage { grid-template-columns: 1fr; }
+    .trace.card { position: fixed; inset: auto 0 0 0; z-index: 40;
+      max-height: 68vh; border-radius: 16px 16px 0 0;
+      transform: translateY(calc(100% - 52px));
+      transition: transform .28s ease; box-shadow: 0 -20px 40px rgba(0,0,0,.5); }
+    .trace.card.open { transform: translateY(0); }
+    .trace-toggle { display: flex; }
+    #traceHeadDesktop { display: none; }
+    .messages { max-height: 52vh; }
+    .wrap { padding-bottom: 70px; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .step { animation: none; opacity: 1; transform: none; }
+    .messages { scroll-behavior: auto; }
+    .bubble .cursor { animation: none; }
+    .working .beat { animation: none; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="eyebrow"><span class="dot"></span> A Squid AI demonstration · Governed Agent</div>
+    <h1>Ask one question. <span class="soft">Watch it answer from three legacy systems it was never allowed to move.</span></h1>
+    <div class="pickerzone">
+      <div class="picker-hint">Pick the stack closest to yours. The agent works the same on any of them</div>
+      <div class="worldtabs" id="worldtabs" role="tablist" aria-label="Choose a stack"></div>
+    </div>
+  </header>
+
+  <div class="stage">
+    <!-- CHAT -->
+    <section class="card chat" aria-label="Conversation">
+      <div class="pane-head">
+        <span class="pane-title" id="orgName">Conversation</span>
+        <div class="persona">
+          <span class="persona-label">Signed in as</span>
+          <div class="seg" id="personaSeg" role="group" aria-label="Your role"></div>
+        </div>
+      </div>
+      <div class="messages" id="messages"></div>
+      <div class="composer">
+        <div class="chips" id="chips"></div>
+        <form class="inputrow" id="askForm" autocomplete="off">
+          <input id="askInput" placeholder="Ask the agent something else…" aria-label="Ask the agent" />
+          <button type="submit" id="askBtn">Ask</button>
+        </form>
+      </div>
+    </section>
+
+    <!-- TRACE -->
+    <aside class="card trace" id="tracePane" aria-label="Agent receipts">
+      <div class="pane-head trace-toggle" id="traceToggle" role="button" tabindex="0" aria-expanded="false">
+        <span class="pane-title">Receipts: how it answered</span>
+        <span class="pane-title" id="traceCount">tap to view</span>
+      </div>
+      <div class="pane-head" id="traceHeadDesktop">
+        <span class="pane-title">Receipts: how it answered</span>
+        <div class="trace-legend" id="legend"></div>
+      </div>
+      <div class="trace-body" id="traceBody">
+        <div class="trace-empty" id="traceEmpty">
+          Every answer shows its work here: <b>which system it touched, what it found, and where it was refused.</b> Nothing is asserted. It is all receipts.
+        </div>
+      </div>
+    </aside>
+  </div>
+
+  <p class="caption">The agent inherits your permissions. It <b>never knows more than you're allowed to.</b></p>
+
+  <div class="cta">
+    <span class="line">Same pattern, <b>your systems.</b></span>
+    <a id="ctaBtn" href="#">See it on your stack &rarr;</a>
+  </div>
+
+  <footer>
+    <span class="brand">Built on the pattern <b>Squid AI</b> deploys in four weeks.</span>
+    <span>Fictional company · fictional systems · synthetic data</span>
+  </footer>
+</div>
+
+<script>
+/* =========================================================================
+   DATA: three worlds, three systems each, personas with real access rules,
+   and scripted question flows (two operational + one permission wall each).
+   ========================================================================= */
+const WORLDS = {
+  fire: {
+    tab: "Public safety", tag: "CAD · ROSTER · FLEET",
+    org: "Ridgeline Fire District",
+    systems: {
+      cad:   { name: "DispatchCAD",  color: "var(--sys-a)", desc: "911 dispatch & apparatus status" },
+      roster:{ name: "CrewRoster",   color: "var(--sys-b)", desc: "shift scheduling" },
+      fleet: { name: "FleetOps",     color: "var(--sys-c)", desc: "apparatus maintenance" }
+    },
+    personas: [
+      { id: "captain", label: "Shift Captain" },
+      { id: "records", label: "Records Division" },
+      { id: "probie",  label: "Probationary FF" }
+    ],
+    defaultPersona: "captain",
+    flows: [
+      {
+        q: "Why is Engine 3 showing unavailable for tonight's shift?",
+        trace: [
+          { sys:"cad",   badge:"STATUS",   text:"Engine 3 → <span class='k'>OUT OF SERVICE</span> since 14:20" },
+          { sys:"fleet", badge:"WORK ORDER",text:"Open <span class='k'>WO-2231</span>, pump pressure test failed, part ETA tomorrow 10:00" },
+          { sys:"roster",badge:"SHIFT",    text:"E3 <span class='k'>auto-unstaffed</span> for B-shift (rule: unstaff when apparatus OOS)" }
+        ],
+        answer: "Engine 3 is down for a failed pump pressure test. Work order WO-2231, replacement part arrives tomorrow at 10:00. Because the rig went out of service, the roster automatically unstaffed it for B-shift, so this is not a crewing gap. Engine 7 is in service but currently unstaffed; move the B-shift crew there to hold coverage tonight."
+      },
+      {
+        q: "Which apparatus is closest to being back in service?",
+        trace: [
+          { sys:"fleet", badge:"QUEUE", text:"Open work orders by ETA → <span class='k'>Ladder 2</span> first, Engine 3 next" },
+          { sys:"cad",   badge:"STATUS",text:"Ladder 2 currently OOS for annual brake inspection <span class='k'>WO-2209</span>" }
+        ],
+        answer: "Ladder 2. Its only open item is the annual brake inspection (WO-2209), scheduled to close today at 16:00, after which it returns to service. Engine 3 is next in line but waits on tomorrow's part."
+      },
+      {
+        q: "Show me the injury details and names from last night's structure fire.",
+        wall: true, grantedRoles: ["records"],
+        deniedTrace: [
+          { sys:"cad",    badge:"INCIDENT", text:"Confirmed <span class='k'>INC-4471</span>, structure fire 22:14, 3 apparatus responding" },
+          { sys:"roster", badge:"CREW",     text:"Responding crew roster is visible to your role" },
+          { sys:"cad",    badge:"SEALED PII",text:"Patient names & injury report", deny:true }
+        ],
+        deniedAnswer: "I can confirm the incident: INC-4471, a structure fire at 22:14, and which apparatus responded. The injury details and patient names live in the sealed incident report, which requires Records Division access. Your role, Shift Captain, cannot open it. Records Officer M. Alvarez can.",
+        deniedNote: "Blocked: sealed incident PII · Records Division only",
+        grantedTrace: [
+          { sys:"cad",    badge:"INCIDENT", text:"Confirmed <span class='k'>INC-4471</span>, structure fire 22:14" },
+          { sys:"cad",    badge:"SEALED PII",text:"Records clearance verified, report unsealed, access logged" },
+          { sys:"cad",    badge:"REPORT",   text:"2 civilians treated on scene, released; 1 firefighter minor smoke inhalation" }
+        ],
+        grantedAnswer: "With Records Division clearance the incident report opens (and your access is logged). INC-4471: two civilians were treated on scene for minor smoke exposure and released; one firefighter, T. Okafor, was evaluated for minor smoke inhalation and cleared. No hospital transports.",
+        grantedNote: "Access granted: Records Division · view logged"
+      }
+    ]
+  },
+
+  retail: {
+    tab: "Retail & loyalty", tag: "POS · LOYALTY · PAYMENTS",
+    org: "Maison Lumière",
+    systems: {
+      pos:    { name: "RegisterPOS",   color: "var(--sys-a)", desc: "in-store point of sale" },
+      loyalty:{ name: "LoyaltyLedger", color: "var(--sys-b)", desc: "member points & tiers" },
+      pay:    { name: "PayLink",       color: "var(--sys-c)", desc: "card & co-brand processor" }
+    },
+    personas: [
+      { id: "associate", label: "Store Associate" },
+      { id: "loyalty",   label: "Loyalty Manager" },
+      { id: "payments",  label: "Payments" }
+    ],
+    defaultPersona: "associate",
+    flows: [
+      {
+        q: "Why didn't this member's points post after her card purchase?",
+        trace: [
+          { sys:"pos",    badge:"TXN",     text:"Txn <span class='k'>#88231</span>, $142.00, member M-5567" },
+          { sys:"pay",    badge:"SETTLED", text:"Paid on Lumière co-brand card, <span class='k'>settled OK</span>" },
+          { sys:"loyalty",badge:"PENDING", text:"Points held, enrolled in <span class='k'>Radiance promo</span> one day after purchase" }
+        ],
+        answer: "The purchase itself is fine: txn #88231, $142 on her co-brand card, fully settled. Her points are pending because she enrolled in the Radiance 3x promo the day after this purchase, and the promo does not apply retroactively. The 142 base points post on the normal 48-hour cycle; the bonus will not. A Loyalty Manager can grant a one-time courtesy adjustment if you want to honor it."
+      },
+      {
+        q: "Is this member close to her next tier?",
+        trace: [
+          { sys:"loyalty",badge:"MEMBER", text:"M-5567, tier <span class='k'>Glow</span>, $1,840 qualifying YTD" },
+          { sys:"loyalty",badge:"THRESHOLD",text:"Radiance tier unlocks at <span class='k'>$2,000</span>" }
+        ],
+        answer: "Very close. She is at $1,840 in qualifying spend for the year against a $2,000 threshold, $160 from Radiance. One average basket gets her there, which is worth mentioning at checkout."
+      },
+      {
+        q: "Give me her full card number for the refund.",
+        wall: true, grantedRoles: ["payments"],
+        deniedTrace: [
+          { sys:"pos",  badge:"TXN",   text:"Txn <span class='k'>#88231</span> confirmed, refundable" },
+          { sys:"pay",  badge:"CARD",  text:"Card on file is <span class='k'>tokenized</span>, last four 1042" },
+          { sys:"pay",  badge:"PCI PAN",text:"Full card number", deny:true }
+        ],
+        deniedAnswer: "You don't need the full number, and I won't expose it. The card is tokenized under PCI scope; only the Payments role can view it, and even then the systems only ever show the last four (1042). I can refund txn #88231 straight to the original tokenized card, no card number required.",
+        deniedNote: "Blocked: full PAN is PCI-scoped · Payments only",
+        grantedTrace: [
+          { sys:"pos", badge:"TXN",    text:"Txn <span class='k'>#88231</span> confirmed" },
+          { sys:"pay", badge:"PCI PAN",text:"Payments clearance verified, token resolved, access logged" },
+          { sys:"pay", badge:"REFUND", text:"Refund of <span class='k'>$142.00</span> routed to card ending 1042" }
+        ],
+        grantedAnswer: "Even with Payments clearance, best practice is to not read the number aloud. The token is enough. I've routed the $142.00 refund to the original card ending 1042, and the token resolution is logged. The refund clears in 3 to 5 business days.",
+        grantedNote: "Access granted: Payments · token resolved, logged"
+      }
+    ]
+  },
+
+  insurance: {
+    tab: "Insurance", tag: "POLICY · TICKETS · PAYOUTS",
+    org: "Meridian Mutual",
+    systems: {
+      policy: { name: "PolicyCore", color: "var(--sys-a)", desc: "legacy policy & claims (1998)" },
+      desk:   { name: "ServiceDesk",color: "var(--sys-b)", desc: "tickets & workflow" },
+      finance:{ name: "FinanceDB",  color: "var(--sys-c)", desc: "payouts" }
+    },
+    personas: [
+      { id: "adjuster", label: "Adjuster" },
+      { id: "intern",   label: "Intern" },
+      { id: "auditor",  label: "Auditor" }
+    ],
+    defaultPersona: "adjuster",
+    flows: [
+      {
+        q: "Why is claim #4471 stalled?",
+        trace: [
+          { sys:"policy", badge:"CLAIM",   text:"Claim <span class='k'>#4471</span>, status OPEN, last touched 12 days ago" },
+          { sys:"desk",   badge:"TICKET",  text:"<span class='k'>INC-8812</span> unassigned 12 days, routed to a disbanded queue" },
+          { sys:"finance",badge:"PAYOUT",  text:"$8,400 already <span class='k'>APPROVED</span>, waiting on claim close" }
+        ],
+        answer: "It is not a money problem. The $8,400 payout was approved 12 days ago. The claim is stalled because ServiceDesk ticket INC-8812 has sat unassigned that entire time. An old routing rule sent it to a queue that no longer has staff. Reassign INC-8812 to the active claims queue and the approved payout releases."
+      },
+      {
+        q: "How many other claims are stuck in that same queue?",
+        trace: [
+          { sys:"desk",   badge:"QUEUE", text:"Queue <span class='k'>Claims-Legacy-3</span> → 6 unassigned tickets, avg age 9 days" },
+          { sys:"policy", badge:"CLAIMS",text:"Cross-ref 6 open claims" },
+          { sys:"finance",badge:"HELD",  text:"$41,200 in approved payouts <span class='k'>held</span>" }
+        ],
+        answer: "Six, all behind the same dead routing rule. They average 9 days idle and are holding $41,200 in payouts that are already approved. This is one broken rule, not six problems. Fix the route and all six clear at once."
+      },
+      {
+        q: "Pull the claimant's SSN and medical records for #4471.",
+        wall: true, grantedRoles: ["auditor"],
+        deniedTrace: [
+          { sys:"policy", badge:"CLAIM",  text:"Claim <span class='k'>#4471</span> confirmed" },
+          { sys:"desk",   badge:"TICKET", text:"INC-8812 confirmed" },
+          { sys:"policy", badge:"PHI/SSN",text:"Claimant SSN & medical records", deny:true }
+        ],
+        deniedAnswer: "I can see claim #4471 and everything about why it is stalled, but the claimant's SSN and medical records are restricted PHI. Your role, Adjuster, is not cleared for them. Special Investigations access is required, with a logged reason. I have not retrieved them, and none of that changes the fix: reassign INC-8812.",
+        deniedNote: "Blocked: SSN / PHI · Special Investigations only",
+        grantedTrace: [
+          { sys:"policy", badge:"CLAIM",  text:"Claim <span class='k'>#4471</span> confirmed" },
+          { sys:"policy", badge:"PHI/SSN",text:"Audit clearance verified, read-only access, reason logged" },
+          { sys:"policy", badge:"RECORD", text:"Records present and complete; disclosure entry written to audit log" }
+        ],
+        grantedAnswer: "As Auditor you have read-only clearance, so I can confirm the SSN and medical records exist and are complete for claim #4471, and I've written the disclosure to the audit log. I don't surface the raw values in chat; auditors verify presence and handling, not content. The claim's stall cause is unchanged: unassigned ticket INC-8812.",
+        grantedNote: "Access granted: Auditor · read-only, disclosure logged"
+      }
+    ]
+  }
+};
+
+/* =========================================================================
+   CONFIG. Dan: point this at your calendar link or a mailto and it becomes
+   the demo's call-to-action. Leave as "#" to hide the button.
+   ========================================================================= */
+const CTA = {
+  label: "See it on your stack →",
+  href: "#"   // e.g. "https://cal.com/squid-ai/intro" or "mailto:dan@getsquid.ai?subject=Squid AI on our stack"
+};
+
+/* ========================================================================= */
+const $ = s => document.querySelector(s);
+let CUR = "fire";
+let persona = WORLDS.fire.defaultPersona;
+let lastFlow = null;
+let timers = [];
+const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+function clearTimers(){
+  timers.forEach(clearTimeout);
+  timers = [];
+  // sweep any in-flight "working" indicator so a fast second click can't orphan one
+  document.querySelectorAll(".msg .working").forEach(el => { const m = el.closest(".msg"); if (m) m.remove(); });
+}
+
+function renderWorldTabs(){
+  const wrap = $("#worldtabs");
+  wrap.innerHTML = "";
+  Object.entries(WORLDS).forEach(([key, w]) => {
+    const b = document.createElement("button");
+    b.className = "worldtab";
+    b.setAttribute("role","tab");
+    b.setAttribute("aria-selected", key === CUR);
+    b.innerHTML = `${w.tab} <span class="sub">${w.org}</span>`;
+    b.onclick = () => selectWorld(key);
+    wrap.appendChild(b);
+  });
+}
+
+function renderPersonas(){
+  const w = WORLDS[CUR];
+  const seg = $("#personaSeg");
+  seg.innerHTML = "";
+  w.personas.forEach(p => {
+    const b = document.createElement("button");
+    b.textContent = p.label;
+    b.setAttribute("aria-pressed", p.id === persona);
+    b.onclick = () => {
+      if (p.id === persona) return;
+      persona = p.id;
+      renderPersonas();
+      // Re-run the last access-gated question so the wall visibly flips in place.
+      if (lastFlow && lastFlow.wall) runFlow(lastFlow);
+    };
+    seg.appendChild(b);
+  });
+}
+
+function renderLegend(){
+  const w = WORLDS[CUR];
+  const leg = $("#legend");
+  leg.innerHTML = "";
+  Object.values(w.systems).forEach(s => {
+    const el = document.createElement("span");
+    el.className = "legend-item";
+    el.innerHTML = `<span class="sw" style="background:${s.color}"></span>${s.name}`;
+    el.title = s.desc;
+    leg.appendChild(el);
+  });
+}
+
+function renderChips(){
+  const w = WORLDS[CUR];
+  const c = $("#chips");
+  c.innerHTML = "";
+  w.flows.forEach(f => {
+    const b = document.createElement("button");
+    b.className = "chip";
+    b.innerHTML = `<span class="q">${f.q}</span>` + (f.wall ? `<span class="wallmark">TESTS ACCESS</span>` : ``);
+    b.onclick = () => runFlow(f);
+    c.appendChild(b);
+  });
+}
+
+function swivelState(){
+  const w = WORLDS[CUR];
+  const cards = Object.values(w.systems).map(s =>
+    `<div class="syscard" style="--sc-color:${s.color}"><span class="nm">${s.name}</span><span class="st">separate login</span></div>`
+  ).join(`<span class="plus" style="align-self:center">+</span>`);
+  return `<div class="swivel">
+    <div class="cap">Three systems. Three logins. <b>No shared language.</b></div>
+    <div class="row">${cards}</div>
+    <div class="cap">Normally you'd open each one by hand and stitch the answer together. Ask the agent once instead, and watch it show its work here.</div>
+  </div>`;
+}
+
+function resetConversation(){
+  clearTimers();
+  $("#messages").innerHTML = "";
+  $("#traceBody").innerHTML = swivelState();
+  $("#traceCount").textContent = "tap to view";
+}
+
+function selectWorld(key){
+  CUR = key;
+  persona = WORLDS[key].defaultPersona;
+  lastFlow = null;
+  $("#orgName").textContent = WORLDS[key].org;
+  renderWorldTabs();
+  renderPersonas();
+  renderLegend();
+  renderChips();
+  resetConversation();
+}
+
+function addUser(text){
+  const m = document.createElement("div");
+  m.className = "msg user";
+  m.innerHTML = `<div class="avatar">${initials()}</div><div class="bubble"></div>`;
+  m.querySelector(".bubble").textContent = text;
+  $("#messages").appendChild(m);
+  scrollChat();
+}
+
+function addWorking(names){
+  const m = document.createElement("div");
+  m.className = "msg agent";
+  m.innerHTML = `<div class="avatar">◆</div><div class="bubble"><span class="working"><span class="beat"></span>Reaching into ${names.join(", ")}…</span></div>`;
+  $("#messages").appendChild(m);
+  scrollChat();
+  return m;
+}
+
+function initials(){
+  const p = WORLDS[CUR].personas.find(x => x.id === persona);
+  return p ? p.label.split(" ").map(w=>w[0]).slice(0,2).join("") : "You";
+}
+
+function scrollChat(){ const m = $("#messages"); m.scrollTop = m.scrollHeight; }
+
+function renderTrace(steps, done){
+  const body = $("#traceBody");
+  body.innerHTML = "";
+  const w = WORLDS[CUR];
+  steps.forEach((st, i) => {
+    const sys = w.systems[st.sys];
+    const el = document.createElement("div");
+    el.className = "step";
+    el.style.setProperty("--n-color", st.deny ? "var(--deny)" : sys.color);
+    el.style.animationDelay = reduce ? "0s" : (i*0.42)+"s";
+    el.innerHTML = `
+      <div class="rail"><div class="node ${st.deny?'deny':'ok'}">${st.deny?'✕':(i+1)}</div></div>
+      <div class="step-body">
+        <span class="step-sys ${st.deny?'deny':''}">${sys.name}<span class="badge">${st.badge}</span></span>
+        <div class="step-text ${st.deny?'deny':''}">${st.text}</div>
+      </div>`;
+    body.appendChild(el);
+  });
+  $("#traceCount").textContent = steps.length + " systems";
+  // reveal answer after the last step animates in
+  const total = reduce ? 0 : (steps.length*0.42 + 0.35)*1000;
+  timers.push(setTimeout(done, total));
+}
+
+function streamAnswer(text, note, noteType){
+  const m = document.createElement("div");
+  m.className = "msg agent";
+  m.innerHTML = `<div class="avatar">◆</div><div class="bubble"><span class="body"></span><span class="cursor"></span></div>`;
+  $("#messages").appendChild(m);
+  const bodyEl = m.querySelector(".body");
+  const cursor = m.querySelector(".cursor");
+  const words = text.split(" ");
+  let i = 0;
+  const tick = () => {
+    if (i < words.length){
+      bodyEl.textContent += (i? " ":"") + words[i++];
+      scrollChat();
+      timers.push(setTimeout(tick, reduce ? 0 : 22));
+    } else {
+      cursor.remove();
+      if (note){
+        const n = document.createElement("div");
+        n.className = noteType === "deny" ? "denied-note" : "granted-note";
+        n.innerHTML = `${noteType === "deny" ? "🔒" : "✓"} ${note}`;
+        m.querySelector(".bubble").appendChild(n);
+      }
+      scrollChat();
+    }
+  };
+  if (reduce){ bodyEl.textContent = text; cursor.remove();
+    if (note){ const n=document.createElement("div"); n.className = noteType==="deny"?"denied-note":"granted-note"; n.innerHTML=`${noteType==="deny"?"🔒":"✓"} ${note}`; m.querySelector(".bubble").appendChild(n);} }
+  else tick();
+}
+
+function runFlow(f){
+  clearTimers();
+  lastFlow = f;
+  addUser(f.q);
+  let trace, answer, note, noteType;
+  if (f.wall){
+    const granted = f.grantedRoles.includes(persona);
+    trace = granted ? f.grantedTrace : f.deniedTrace;
+    answer = granted ? f.grantedAnswer : f.deniedAnswer;
+    note = granted ? f.grantedNote : f.deniedNote;
+    noteType = granted ? "grant" : "deny";
+  } else {
+    trace = f.trace; answer = f.answer; note = null;
+  }
+  const w = WORLDS[CUR];
+  const sysNames = [...new Set(trace.map(s => w.systems[s.sys].name))];
+  const working = addWorking(sysNames);
+  renderTrace(trace, () => { working.remove(); streamAnswer(answer, note, noteType); });
+}
+
+/* Free-type: match a known flow loosely, else answer honestly (no invented data). */
+function handleFreeText(text){
+  const t = text.toLowerCase();
+  const w = WORLDS[CUR];
+  let best = null, bestScore = 0;
+  w.flows.forEach(f => {
+    const words = f.q.toLowerCase().replace(/[^\w\s]/g,"").split(/\s+/).filter(x=>x.length>3);
+    const score = words.filter(x => t.includes(x)).length;
+    if (score > bestScore){ bestScore = score; best = f; }
+  });
+  if (best && bestScore >= 2){ runFlow(best); return; }
+  // honest fallback: the demo never invents data outside the seeded systems
+  clearTimers();
+  addUser(text);
+  const names = Object.values(w.systems).map(s=>s.name).join(", ");
+  const working = addWorking(Object.values(w.systems).map(s=>s.name));
+  renderTrace(
+    Object.keys(w.systems).map((sys,i)=>({ sys, badge:"SEARCHED", text:"No matching record found" })),
+    () => { working.remove(); streamAnswer(
+      `I searched ${names} and don't have a record that answers that. This demonstration is grounded only in synthetic data across those three systems, so I won't guess. Try one of the suggested questions, or ask about a claim, ticket, member, or apparatus that lives in these systems.`,
+      "Grounded: answers only from connected systems, never invented", "grant"); }
+  );
+}
+
+$("#askForm").addEventListener("submit", e => {
+  e.preventDefault();
+  const v = $("#askInput").value.trim();
+  if (!v) return;
+  $("#askInput").value = "";
+  handleFreeText(v);
+  if (window.matchMedia("(max-width:860px)").matches) openTrace(true);
+});
+
+/* mobile trace drawer */
+function openTrace(state){
+  const p = $("#tracePane");
+  p.classList.toggle("open", state);
+  $("#traceToggle").setAttribute("aria-expanded", state);
+}
+$("#traceToggle").addEventListener("click", () => openTrace(!$("#tracePane").classList.contains("open")));
+$("#traceToggle").addEventListener("keydown", e => { if(e.key==="Enter"||e.key===" "){ e.preventDefault(); openTrace(!$("#tracePane").classList.contains("open")); }});
+
+/* CTA: always visible; until Dan wires a real href, the button is inert */
+(function(){
+  const btn = $("#ctaBtn");
+  btn.textContent = CTA.label;
+  if (CTA.href && CTA.href !== "#"){ btn.href = CTA.href; }
+  else { btn.href = "#"; btn.addEventListener("click", e => e.preventDefault()); }
+})();
+
+/* boot */
+renderWorldTabs();
+renderPersonas();
+renderLegend();
+renderChips();
+selectWorld("fire");
+</script>
+</body>
+</html>
