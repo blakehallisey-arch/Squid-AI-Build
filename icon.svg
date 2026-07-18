@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="ground" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1A2130"/>
+      <stop offset="55%" stop-color="#12161F"/>
+      <stop offset="100%" stop-color="#0B0E14"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="50%" cy="46%" r="42%">
+      <stop offset="0%" stop-color="#48E0C8" stop-opacity="0.35"/>
+      <stop offset="55%" stop-color="#48E0C8" stop-opacity="0.12"/>
+      <stop offset="100%" stop-color="#48E0C8" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="shieldStroke" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#6FF2DA"/>
+      <stop offset="100%" stop-color="#2FBBA5"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="512" height="512" fill="url(#ground)"/>
+  <rect width="512" height="512" fill="url(#glow)"/>
+
+  <!-- Shield -->
+  <path d="M256 96
+           L354 132
+           C354 220 354 296 256 372
+           C158 296 158 220 158 132
+           Z"
+        fill="none"
+        stroke="url(#shieldStroke)"
+        stroke-width="20"
+        stroke-linejoin="round"
+        stroke-linecap="round"/>
+
+  <!-- Keyhole cut inside shield -->
+  <circle cx="256" cy="222" r="26" fill="#48E0C8"/>
+  <path d="M241 240 L271 240 L262 300 L250 300 Z" fill="#48E0C8"/>
+</svg>
