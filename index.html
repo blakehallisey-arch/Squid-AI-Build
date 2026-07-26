@@ -50,6 +50,31 @@
     display: flex;
     flex-direction: column;
     gap: 20px;
+    position: relative;
+  }
+
+  /* ---------- X-ray button (portfolio-wide standard: engineering view, top-right) ---------- */
+  .xray-btn {
+    position: absolute; top: 22px; right: 24px; z-index: 5;
+    display: flex; align-items: center; gap: 6px;
+    font-family: var(--mono); font-size: 10px; letter-spacing: .1em; text-transform: uppercase;
+    color: var(--ink-dim); text-decoration: none;
+    background: rgba(18,22,31,.6); border: 1px solid var(--line); border-radius: 999px;
+    padding: 7px 12px 7px 10px;
+    transition: border-color .2s ease, color .2s ease, background .2s ease, transform .2s ease;
+  }
+  .xray-btn svg { flex: none; width: 13px; height: 13px; opacity: .85; }
+  .xray-btn:hover {
+    color: var(--ink); border-color: var(--accent-deep);
+    background: rgba(72,224,200,.1);
+    transform: translateY(-1px);
+  }
+  .xray-btn:hover svg { opacity: 1; }
+  .xray-btn:active { transform: translateY(0); }
+  @media (max-width: 520px) {
+    .xray-btn { top: 18px; right: 16px; padding: 7px; }
+    .xray-btn span { display: none; }
+    .xray-btn svg { width: 14px; height: 14px; }
   }
 
   /* ---------- header ---------- */
@@ -596,6 +621,14 @@
 </head>
 <body>
 <div class="wrap">
+  <a class="xray-btn" href="../xray.html?b=governed-agent-demo" aria-label="How it's made — lift the hood on this build">
+    <svg viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <rect x="2" y="2" width="12" height="12" rx="2" stroke="var(--ink-dim)" stroke-width="1.1"/>
+      <path d="M2 6.5h12M5 2v12M11 2v12" stroke="var(--ink-dim)" stroke-width="1" opacity=".6"/>
+      <circle cx="8" cy="10" r="1.6" fill="var(--accent)"/>
+    </svg>
+    <span>How it's made</span>
+  </a>
   <header>
     <div class="eyebrow"><span class="dot"></span> A Squid AI demonstration · Governed Agent</div>
     <h1>Ask one question. <span class="soft">Watch it answer from three legacy systems it was never allowed to move.</span></h1>
