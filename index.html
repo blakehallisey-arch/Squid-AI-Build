@@ -1043,14 +1043,14 @@ function streamAnswer(text, note, noteType){
       if (note){
         const n = document.createElement("div");
         n.className = noteType === "deny" ? "denied-note" : "granted-note";
-        n.innerHTML = `${noteType === "deny" ? "🔒" : "✓"} ${note}`;
+        n.innerHTML = `${noteType === "deny" ? "✕" : "✓"} ${note}`;
         m.querySelector(".bubble").appendChild(n);
       }
       scrollChat();
     }
   };
   if (reduce){ bodyEl.textContent = text; cursor.remove();
-    if (note){ const n=document.createElement("div"); n.className = noteType==="deny"?"denied-note":"granted-note"; n.innerHTML=`${noteType==="deny"?"🔒":"✓"} ${note}`; m.querySelector(".bubble").appendChild(n);} }
+    if (note){ const n=document.createElement("div"); n.className = noteType==="deny"?"denied-note":"granted-note"; n.innerHTML=`${noteType==="deny"?"✕":"✓"} ${note}`; m.querySelector(".bubble").appendChild(n);} }
   else tick();
 }
 
