@@ -1,0 +1,5 @@
+# Secrets: GLOB, never the bare name. A bare `.env` ignores one path, so the
+# .env.bak / .env.test / .env.copy beside it stays committable and holds the same
+# live keys. Standing rule across every repo in the shop (Ward, 2026-10-01).
+.env*
+!.env.example
